@@ -30,9 +30,16 @@ body {
   width: 88%;
   height: 88%;
   object-fit: contain;
+  pointer-events: auto;
+  cursor: pointer;
   filter: drop-shadow(0 13px 16px rgba(31, 37, 40, 0.22));
   transform: scaleX(var(--pet-face));
   transform-origin: 50% 78%;
+}
+
+.pet-image.is-walking {
+  width: 74%;
+  height: 74%;
 }
 
 .pet-breath {

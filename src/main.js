@@ -4,7 +4,7 @@ const STORAGE_KEY = "desktop-pet-tauri-prototype";
 
 const state = {
   enabled: true,
-  dynamic: true,
+  dynamic: false,
   size: "small",
   speed: 3,
   reminderMinutes: 60,
@@ -31,6 +31,7 @@ function installHandlers() {
 function loadState() {
   try {
     Object.assign(state, JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"));
+    state.dynamic = false;
   } catch {
     localStorage.removeItem(STORAGE_KEY);
   }
@@ -52,7 +53,7 @@ async function syncPet() {
   elements.enableButton.setAttribute("aria-pressed", String(state.enabled));
   elements.stopButton.setAttribute("aria-pressed", String(!state.enabled));
 
-  await invoke("set_pet_click_through", { ignore: true });
+  await invoke("set_pet_click_through", { ignore: false });
   await invoke("set_pet_visible", { visible: state.enabled });
   await invoke("update_pet_options", {
     payload: JSON.stringify(state),

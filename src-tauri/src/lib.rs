@@ -96,7 +96,7 @@ pub fn run() {
         .setup(|app| {
             if let Some(pet) = app.get_webview_window("pet") {
                 let _ = pet.set_always_on_top(true);
-                let _ = pet.set_ignore_cursor_events(true);
+                let _ = pet.set_ignore_cursor_events(false);
             }
             Ok(())
         })

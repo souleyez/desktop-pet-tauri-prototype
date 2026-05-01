@@ -5,7 +5,7 @@ const STORAGE_KEY = "desktop-pet-tauri-prototype";
 
 const options = {
   enabled: true,
-  dynamic: true,
+  dynamic: false,
   size: "small",
   speed: 3,
   reminderMinutes: 60,
@@ -17,7 +17,7 @@ const sizeMap = {
   large: 235,
 };
 
-const WALK_SCALE = 1.5;
+const WALK_SCALE = 1.8;
 const WALK_DURATION_RANGE = [26000, 43000];
 const IDLE_DELAY_RANGE = [60000, 90000];
 
@@ -75,6 +75,7 @@ async function init() {
   elements.stage = document.getElementById("petStage");
   elements.image = document.getElementById("petImage");
   elements.speech = document.getElementById("petSpeech");
+  elements.image.addEventListener("click", handlePetClick);
 
   preloadSprites();
   loadSavedState();
@@ -98,7 +99,7 @@ function loadSavedState() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     Object.assign(options, {
       enabled: saved.enabled ?? true,
-      dynamic: saved.dynamic ?? true,
+      dynamic: false,
       size: saved.size ?? "small",
       speed: saved.speed ?? 3,
       reminderMinutes: saved.reminderMinutes ?? 60,
@@ -112,6 +113,7 @@ async function installListeners() {
   await listen("pet-options-updated", (event) => {
     try {
       Object.assign(options, JSON.parse(event.payload));
+      options.dynamic = false;
       applyOptions();
       resetReminderTimer();
       scheduleMove(options.enabled ? IDLE_DELAY_RANGE[0] : 0);
@@ -126,12 +128,22 @@ async function installListeners() {
 }
 
 function applyOptions() {
-  elements.image.classList.toggle("pet-breath", options.dynamic);
+  elements.image.classList.remove("pet-breath");
   invoke("set_pet_visible", { visible: options.enabled });
 
   if (!options.enabled) {
     stopMovement();
   }
+}
+
+async function handlePetClick() {
+  if (!options.enabled) return;
+
+  window.clearTimeout(moveTimer);
+  if (walkFrameTimer) return;
+
+  await walkToRandomDesktopPoint();
+  scheduleMove(nextDelay());
 }
 
 async function placeAtStart() {
@@ -217,6 +229,7 @@ function walkTo(targetX, targetY, duration) {
 function startWalking() {
   window.clearInterval(walkFrameTimer);
   elements.image.classList.remove("pet-breath");
+  elements.image.classList.add("is-walking");
   walkIndex = 0;
   elements.image.src = walkSprites[walkIndex];
   walkFrameTimer = window.setInterval(() => {
@@ -228,7 +241,7 @@ function startWalking() {
 function stopWalking() {
   window.clearInterval(walkFrameTimer);
   walkFrameTimer = 0;
-  elements.image.classList.toggle("pet-breath", options.dynamic);
+  elements.image.classList.remove("is-walking", "pet-breath");
 }
 
 function stopMovement() {
@@ -240,7 +253,7 @@ function stopMovement() {
 
 function setStaticAction(action) {
   elements.image.src = actionSprites[action] || actionSprites.idle;
-  elements.image.classList.toggle("pet-breath", options.dynamic);
+  elements.image.classList.remove("is-walking", "pet-breath");
 }
 
 function setRandomIdleAction() {
