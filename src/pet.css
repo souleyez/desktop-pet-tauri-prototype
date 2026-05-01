@@ -32,14 +32,20 @@ body {
   object-fit: contain;
   pointer-events: auto;
   cursor: pointer;
+  opacity: 1;
   filter: drop-shadow(0 13px 16px rgba(31, 37, 40, 0.22));
   transform: scaleX(var(--pet-face));
   transform-origin: 50% 78%;
+  transition: opacity 260ms ease;
 }
 
 .pet-image.is-walking {
-  width: 74%;
-  height: 74%;
+  width: 55%;
+  height: 55%;
+}
+
+.pet-image.is-hidden {
+  opacity: 0;
 }
 
 .pet-breath {

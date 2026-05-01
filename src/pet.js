@@ -1,7 +1,7 @@
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
-const STORAGE_KEY = "desktop-pet-tauri-prototype";
+const STORAGE_KEY = "solara-desktop-pet";
 
 const options = {
   enabled: true,
@@ -17,10 +17,11 @@ const sizeMap = {
   large: 235,
 };
 
-const WALK_SCALE = 1.8;
-const WALK_DURATION_RANGE = [26000, 43000];
+const WALK_SCALE = 2.4;
+const WALK_IN_PLACE_DURATION_RANGE = [3800, 5200];
 const IDLE_DELAY_RANGE = [60000, 90000];
 const WALK_FRAME_INTERVAL = 480;
+const TELEPORT_FADE_MS = 260;
 
 const actionSprites = {
   idle: "assets/pet/actions/idle.png",
@@ -64,7 +65,6 @@ let moveTimer = 0;
 let reminderTimer = 0;
 let speechTimer = 0;
 let walkFrameTimer = 0;
-let moveFrame = 0;
 let moveToken = 0;
 let currentX = 80;
 let currentY = 80;
@@ -169,7 +169,7 @@ async function walkToRandomDesktopPoint() {
   if (!options.enabled) return;
 
   const bounds = await invoke("get_desktop_bounds");
-  const size = currentWalkWindowSize();
+  const size = currentWindowSize();
   const margin = 22;
   const maxX = bounds.x + bounds.width - size - margin;
   const maxY = bounds.y + bounds.height - size - margin;
@@ -181,55 +181,38 @@ async function walkToRandomDesktopPoint() {
     ? randomBetween(Math.max(minY, bounds.y + Math.round(bounds.height * 0.62)), Math.max(minY, maxY))
     : randomBetween(minY, Math.max(minY, maxY));
 
-  await walkTo(targetX, targetY, randomBetween(WALK_DURATION_RANGE[0], WALK_DURATION_RANGE[1]));
+  await walkTo(targetX, targetY, bounds);
 }
 
-function walkTo(targetX, targetY, duration) {
+async function walkTo(targetX, targetY, bounds) {
   const startX = currentX;
   const startY = currentY;
   const token = ++moveToken;
+  const idleSize = currentWindowSize();
   const size = currentWalkWindowSize();
-  const startedAt = performance.now();
-  let lastMove = 0;
+  const walkPosition = anchoredWalkPosition(startX, startY, idleSize, size, bounds);
 
   setFacing(targetX < startX ? -1 : 1);
+  await invoke("move_pet_window", { x: walkPosition.x, y: walkPosition.y, size });
   startWalking();
 
-  return new Promise((resolve) => {
-    const step = (now) => {
-      if (token !== moveToken || !options.enabled) {
-        stopWalking();
-        resolve();
-        return;
-      }
+  await wait(randomBetween(WALK_IN_PLACE_DURATION_RANGE[0], WALK_IN_PLACE_DURATION_RANGE[1]));
+  if (token !== moveToken || !options.enabled) return;
 
-      const progress = Math.min(1, (now - startedAt) / duration);
-      const eased = easeInOut(progress);
-      currentX = Math.round(startX + (targetX - startX) * eased);
-      currentY = Math.round(startY + (targetY - startY) * eased);
+  await fadePet(true);
+  stopWalking();
 
-      if (now - lastMove > 42 || progress === 1) {
-        lastMove = now;
-        invoke("move_pet_window", { x: currentX, y: currentY, size });
-      }
-
-      if (progress < 1) {
-        moveFrame = window.requestAnimationFrame(step);
-      } else {
-        stopWalking();
-        invoke("move_pet_window", { x: currentX, y: currentY, size: currentWindowSize() });
-        setRandomIdleAction();
-        resolve();
-      }
-    };
-
-    moveFrame = window.requestAnimationFrame(step);
-  });
+  currentX = targetX;
+  currentY = targetY;
+  await invoke("move_pet_window", { x: currentX, y: currentY, size: idleSize });
+  setRandomIdleAction();
+  await fadePet(false);
 }
 
 function startWalking() {
   window.clearInterval(walkFrameTimer);
   elements.image.classList.remove("pet-breath");
+  elements.image.classList.remove("is-hidden");
   elements.image.classList.add("is-walking");
   walkIndex = 0;
   elements.image.src = walkSprites[walkIndex];
@@ -247,7 +230,6 @@ function stopWalking() {
 
 function stopMovement() {
   window.clearTimeout(moveTimer);
-  window.cancelAnimationFrame(moveFrame);
   moveToken += 1;
   stopWalking();
 }
@@ -306,8 +288,32 @@ function nextDelay() {
   return randomBetween(IDLE_DELAY_RANGE[0], IDLE_DELAY_RANGE[1]);
 }
 
-function easeInOut(value) {
-  return value < 0.5 ? 2 * value * value : 1 - Math.pow(-2 * value + 2, 2) / 2;
+function anchoredWalkPosition(x, y, idleSize, walkSize, bounds) {
+  const bottomCenterX = x + idleSize / 2;
+  const bottomY = y + idleSize;
+  const margin = 10;
+  const minX = bounds.x + margin;
+  const minY = bounds.y + margin;
+  const maxX = bounds.x + bounds.width - walkSize - margin;
+  const maxY = bounds.y + bounds.height - walkSize - margin;
+
+  return {
+    x: clamp(Math.round(bottomCenterX - walkSize / 2), minX, Math.max(minX, maxX)),
+    y: clamp(Math.round(bottomY - walkSize), minY, Math.max(minY, maxY)),
+  };
+}
+
+async function fadePet(hidden) {
+  elements.image.classList.toggle("is-hidden", hidden);
+  await wait(TELEPORT_FADE_MS);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function randomBetween(min, max) {

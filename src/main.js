@@ -1,6 +1,6 @@
 const { invoke } = window.__TAURI__.core;
 
-const STORAGE_KEY = "desktop-pet-tauri-prototype";
+const STORAGE_KEY = "solara-desktop-pet";
 
 const state = {
   enabled: true,

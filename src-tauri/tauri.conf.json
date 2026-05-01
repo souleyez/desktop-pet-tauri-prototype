@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Desktop Pet",
+  "productName": "solara",
   "version": "0.1.0",
-  "identifier": "com.souleyez.desktop-pet-tauri-prototype",
+  "identifier": "com.souleyez.solara",
   "build": {
     "frontendDist": "../src"
   },
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "桌面宠物",
+        "title": "solara",
         "width": 360,
         "height": 220,
         "resizable": false,
@@ -21,7 +21,7 @@
       {
         "label": "pet",
         "url": "pet.html",
-        "title": "桌面宠物",
+        "title": "solara",
         "width": 160,
         "height": 160,
         "decorations": false,
