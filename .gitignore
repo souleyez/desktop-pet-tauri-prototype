@@ -20,6 +20,7 @@ src-tauri/target
 
 # Local verification screenshots
 tauri-*.png
+*-preview.png
 
 # Editor directories and files
 .vscode/*

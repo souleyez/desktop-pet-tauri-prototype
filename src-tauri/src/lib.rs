@@ -11,6 +11,7 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
 const DEFAULT_BASE_URL: &str = "https://souleye.cc";
 const DEFAULT_ORCHESTRATOR_PATH: &str = "/api/codex/orchestrator/v1";
 const DEFAULT_SOURCE: &str = "desktop-pet-client";
+const BUNDLED_ACCESS_KEY: Option<&str> = option_env!("DESKTOP_PET_ORCHESTRATOR_ACCESS_KEY");
 
 #[derive(serde::Serialize)]
 struct DesktopBounds {
@@ -313,6 +314,17 @@ fn orchestrator_base_url() -> String {
 
 fn read_orchestrator_access_key() -> Result<String, String> {
     if let Ok(value) = env::var("CODEX_ORCHESTRATOR_ACCESS_KEY") {
+        let key = value
+            .trim()
+            .trim_start_matches("Bearer ")
+            .trim()
+            .to_string();
+        if !key.is_empty() {
+            return Ok(key);
+        }
+    }
+
+    if let Some(value) = BUNDLED_ACCESS_KEY {
         let key = value
             .trim()
             .trim_start_matches("Bearer ")

@@ -1,6 +1,7 @@
 const { invoke } = window.__TAURI__.core;
 
 const STORAGE_KEY = "desktop-pet-tauri-prototype";
+const DEFAULT_PET_IMAGE = "assets/default-british-shorthair.svg";
 const POLL_STATUSES = new Set(["queued", "submitted", "running"]);
 
 const state = {
@@ -66,7 +67,7 @@ function applyState() {
 }
 
 async function bootPetWindow() {
-  const imageUrl = state.imageDataUrl || createDefaultPetSvg();
+  const imageUrl = state.generatedImageUrl || DEFAULT_PET_IMAGE;
   await invoke("set_pet_visible", { visible: true });
   await invoke("set_pet_click_through", { ignore: true });
   await invoke("update_pet_image", { imageUrl });
@@ -101,16 +102,17 @@ async function handleUpload(event) {
   applyState();
 
   setStatus(`识别您的宠物是 ${state.petType}，可修改后继续生成。`);
-  await invoke("update_pet_image", { imageUrl: state.imageDataUrl });
+  await invoke("update_pet_image", { imageUrl: state.generatedImageUrl || DEFAULT_PET_IMAGE });
+  await generatePet();
 }
 
 async function generatePet() {
-  if (!state.imageDataUrl || !state.petType.trim()) return;
+  if (state.isGenerating || !state.imageDataUrl || !state.petType.trim()) return;
 
   state.isGenerating = true;
   saveState();
   applyState();
-  setStatus("正在提交到 1 服务器图片排队处理通道...");
+  setStatus("已上传，正在自动生成 Q 版桌面宠物...");
 
   try {
     const submitted = await invoke("submit_pet_generation_task", {
@@ -138,6 +140,9 @@ async function pollUntilDone(taskId) {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     await wait(attempt === 0 ? 1200 : 5000);
     const result = await invoke("poll_pet_generation_task", { taskId });
+    if (taskId !== state.taskId) {
+      return;
+    }
     const status = String(result.status || "").toLowerCase();
     setStatus(`${result.message || "处理中"}：${status}`);
 
@@ -210,18 +215,4 @@ function fileToDataUrl(file) {
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function createDefaultPetSvg() {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
-      <defs><linearGradient id="body" x1="30" x2="135" y1="26" y2="140"><stop stop-color="#71c7bd"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs>
-      <path d="M36 92c0-31 18-57 44-57s44 26 44 57c0 28-18 43-44 43s-44-15-44-43Z" fill="url(#body)"/>
-      <path d="M52 53c-10-17 5-25 19-12M108 53c10-17-5-25-19-12" fill="none" stroke="#0f4f4a" stroke-width="10" stroke-linecap="round"/>
-      <circle cx="63" cy="83" r="7" fill="#102326"/><circle cx="97" cy="83" r="7" fill="#102326"/>
-      <path d="M67 108c10 8 18 8 28 0" fill="none" stroke="#102326" stroke-width="6" stroke-linecap="round"/>
-      <path d="M38 97c-16 3-23 12-26 25M122 97c16 3 23 12 26 25" fill="none" stroke="#0f766e" stroke-width="8" stroke-linecap="round"/>
-      <circle cx="57" cy="95" r="9" fill="#f3b19a" opacity=".55"/><circle cx="103" cy="95" r="9" fill="#f3b19a" opacity=".55"/>
-    </svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
