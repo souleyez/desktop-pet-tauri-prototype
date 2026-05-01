@@ -17,11 +17,12 @@ const sizeMap = {
   large: 235,
 };
 
-const WALK_SCALE = 2.4;
+const WALK_SCALE = 3.6;
 const WALK_IN_PLACE_DURATION_RANGE = [3800, 5200];
 const IDLE_DELAY_RANGE = [60000, 90000];
 const WALK_FRAME_INTERVAL = 480;
 const TELEPORT_FADE_MS = 260;
+const WALK_LAYOUT_SETTLE_MS = 180;
 
 const actionSprites = {
   idle: "assets/pet/actions/idle.png",
@@ -134,6 +135,8 @@ function applyOptions() {
 
   if (!options.enabled) {
     stopMovement();
+  } else {
+    elements.image.classList.remove("is-hidden");
   }
 }
 
@@ -193,8 +196,15 @@ async function walkTo(targetX, targetY, bounds) {
   const walkPosition = anchoredWalkPosition(startX, startY, idleSize, size, bounds);
 
   setFacing(targetX < startX ? -1 : 1);
+  await fadePet(true);
+  if (token !== moveToken || !options.enabled) return;
+
   await invoke("move_pet_window", { x: walkPosition.x, y: walkPosition.y, size });
   startWalking();
+  await wait(WALK_LAYOUT_SETTLE_MS);
+  if (token !== moveToken || !options.enabled) return;
+
+  await fadePet(false);
 
   await wait(randomBetween(WALK_IN_PLACE_DURATION_RANGE[0], WALK_IN_PLACE_DURATION_RANGE[1]));
   if (token !== moveToken || !options.enabled) return;
@@ -232,6 +242,7 @@ function stopMovement() {
   window.clearTimeout(moveTimer);
   moveToken += 1;
   stopWalking();
+  elements.image.classList.remove("is-hidden");
 }
 
 function setStaticAction(action) {
@@ -245,6 +256,7 @@ function setRandomIdleAction() {
 
 function setFacing(direction) {
   elements.image.style.setProperty("--pet-face", String(direction));
+  elements.image.style.setProperty("--pet-walk-shift", direction > 0 ? "-10%" : "10%");
 }
 
 function resetReminderTimer() {

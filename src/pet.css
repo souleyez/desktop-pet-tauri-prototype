@@ -27,6 +27,7 @@ body {
 
 .pet-image {
   --pet-face: 1;
+  --pet-walk-shift: 0%;
   width: 88%;
   height: 88%;
   object-fit: contain;
@@ -40,8 +41,9 @@ body {
 }
 
 .pet-image.is-walking {
-  width: 55%;
-  height: 55%;
+  width: 38%;
+  height: 38%;
+  transform: translateX(var(--pet-walk-shift)) scaleX(var(--pet-face));
 }
 
 .pet-image.is-hidden {
