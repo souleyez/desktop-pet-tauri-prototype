@@ -12,12 +12,12 @@ const options = {
 };
 
 const sizeMap = {
-  small: 150,
-  medium: 190,
-  large: 235,
+  small: 600,
+  medium: 760,
+  large: 940,
 };
 
-const WALK_SCALE = 3.6;
+const WALK_SCALE = 1.6;
 const WALK_IN_PLACE_DURATION_RANGE = [3800, 5200];
 const IDLE_DELAY_RANGE = [60000, 90000];
 const WALK_FRAME_INTERVAL = 480;

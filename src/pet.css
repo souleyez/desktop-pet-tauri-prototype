@@ -34,15 +34,15 @@ body {
   pointer-events: auto;
   cursor: pointer;
   opacity: 1;
-  filter: drop-shadow(0 13px 16px rgba(31, 37, 40, 0.22));
+  filter: none;
   transform: scaleX(var(--pet-face));
   transform-origin: 50% 78%;
   transition: opacity 260ms ease;
 }
 
 .pet-image.is-walking {
-  width: 38%;
-  height: 38%;
+  width: 85%;
+  height: 85%;
   transform: translateX(var(--pet-walk-shift)) scaleX(var(--pet-face));
 }
 
