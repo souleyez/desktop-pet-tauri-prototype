@@ -1,0 +1,13 @@
+{
+  "name": "desktop-pet-tauri-prototype",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "build:mac": "tauri build -- --target universal-apple-darwin --bundles app,dmg"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

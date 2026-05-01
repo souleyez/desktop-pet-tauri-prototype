@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>桌面宠物原型控制台</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+
+  <body>
+    <main class="console-shell">
+      <header class="hero">
+        <span class="eyebrow">desktop pet</span>
+        <h1>桌面宠物</h1>
+        <p>上传一张宠物图片，生成一个会在桌面上陪伴你的 Q 版小宠物。</p>
+      </header>
+
+      <section class="upload-panel">
+        <label id="fileDrop" class="file-drop">
+          <input id="petUpload" type="file" accept="image/png,image/webp,image/jpeg" />
+          <span id="uploadLabel">上传宠物图片</span>
+        </label>
+
+        <img id="originalPreview" class="pet-preview" alt="" />
+
+        <div id="recognitionBlock" class="recognition-block" hidden>
+          <label>
+            识别您的宠物是
+            <input id="petTypeInput" value="" />
+          </label>
+          <button id="generateButton" class="primary-button" type="button">生成桌面宠物</button>
+        </div>
+
+        <div id="jobStatus" class="job-status" hidden></div>
+      </section>
+    </main>
+  </body>
+</html>
