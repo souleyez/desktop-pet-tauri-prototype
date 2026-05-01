@@ -26,10 +26,12 @@ body {
 }
 
 .pet-image {
-  width: 68%;
-  height: 68%;
+  --pet-face: 1;
+  width: 88%;
+  height: 88%;
   object-fit: contain;
-  filter: drop-shadow(0 13px 16px rgba(31, 37, 40, 0.24));
+  filter: drop-shadow(0 13px 16px rgba(31, 37, 40, 0.22));
+  transform: scaleX(var(--pet-face));
   transform-origin: 50% 78%;
 }
 
@@ -60,22 +62,22 @@ body {
 @keyframes petBreath {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scaleX(var(--pet-face)) scaleY(1);
   }
   50% {
-    transform: translateY(-5px) scale(1.03, 0.98);
+    transform: translateY(-5px) scaleX(var(--pet-face)) scaleY(0.98);
   }
 }
 
 @keyframes petRemind {
   0%,
   100% {
-    transform: translateY(0) rotate(0);
+    transform: translateY(0) scaleX(var(--pet-face)) rotate(0);
   }
   30% {
-    transform: translateY(-12px) rotate(-6deg);
+    transform: translateY(-12px) scaleX(var(--pet-face)) rotate(-6deg);
   }
   65% {
-    transform: translateY(3px) rotate(6deg);
+    transform: translateY(3px) scaleX(var(--pet-face)) rotate(6deg);
   }
 }

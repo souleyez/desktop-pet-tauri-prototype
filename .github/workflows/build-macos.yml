@@ -64,7 +64,6 @@ jobs:
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          DESKTOP_PET_ORCHESTRATOR_ACCESS_KEY: ${{ secrets.DESKTOP_PET_ORCHESTRATOR_ACCESS_KEY }}
         run: npm run build:mac
 
       - name: Upload macOS installer

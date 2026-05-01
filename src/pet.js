@@ -17,11 +17,53 @@ const sizeMap = {
   large: 235,
 };
 
+const actionSprites = {
+  idle: "assets/pet/actions/idle.png",
+  blink: "assets/pet/actions/blink.png",
+  "look-left": "assets/pet/actions/look-left.png",
+  "look-right": "assets/pet/actions/look-right.png",
+  sit: "assets/pet/actions/sit.png",
+  stretch: "assets/pet/actions/stretch.png",
+  "paw-raise": "assets/pet/actions/paw-raise.png",
+  "lie-down": "assets/pet/actions/lie-down.png",
+  sleep: "assets/pet/actions/sleep.png",
+  hop: "assets/pet/actions/hop.png",
+};
+
+const walkSprites = [
+  "assets/pet/walk/walk-01.png",
+  "assets/pet/walk/walk-02.png",
+  "assets/pet/walk/walk-03.png",
+  "assets/pet/walk/walk-04.png",
+  "assets/pet/walk/walk-05.png",
+  "assets/pet/walk/walk-06.png",
+  "assets/pet/walk/walk-07.png",
+  "assets/pet/walk/walk-08.png",
+];
+
+const idleActions = [
+  "idle",
+  "blink",
+  "look-left",
+  "look-right",
+  "sit",
+  "stretch",
+  "paw-raise",
+  "lie-down",
+  "sleep",
+  "hop",
+];
+
 const elements = {};
 let moveTimer = 0;
 let reminderTimer = 0;
 let speechTimer = 0;
+let walkFrameTimer = 0;
+let moveFrame = 0;
+let moveToken = 0;
 let currentX = 80;
+let currentY = 80;
+let walkIndex = 0;
 
 window.addEventListener("DOMContentLoaded", init);
 
@@ -30,12 +72,21 @@ async function init() {
   elements.image = document.getElementById("petImage");
   elements.speech = document.getElementById("petSpeech");
 
+  preloadSprites();
   loadSavedState();
+  setStaticAction("idle");
   applyOptions();
   await placeAtStart();
   await installListeners();
   scheduleMove(500);
   resetReminderTimer();
+}
+
+function preloadSprites() {
+  [...Object.values(actionSprites), ...walkSprites].forEach((src) => {
+    const image = new Image();
+    image.src = src;
+  });
 }
 
 function loadSavedState() {
@@ -48,57 +99,58 @@ function loadSavedState() {
       speed: saved.speed ?? 3,
       reminderMinutes: saved.reminderMinutes ?? 60,
     });
-    elements.image.src = saved.imageUrl || createDefaultPetSvg();
   } catch {
-    elements.image.src = createDefaultPetSvg();
+    localStorage.removeItem(STORAGE_KEY);
   }
 }
 
 async function installListeners() {
-  await listen("pet-image-updated", (event) => {
-    elements.image.src = event.payload || createDefaultPetSvg();
-  });
-
   await listen("pet-options-updated", (event) => {
     try {
       Object.assign(options, JSON.parse(event.payload));
       applyOptions();
       resetReminderTimer();
-      scheduleMove(150);
+      scheduleMove(options.enabled ? 150 : 0);
     } catch {
       // Ignore malformed prototype payloads.
     }
   });
 
   await listen("pet-reminder", () => {
-    showReminder("测试提醒：休息一下，看看远处。");
+    showReminder("休息一下，看看远处。");
   });
 }
 
 function applyOptions() {
   elements.image.classList.toggle("pet-breath", options.dynamic);
   invoke("set_pet_visible", { visible: options.enabled });
+
+  if (!options.enabled) {
+    stopMovement();
+  }
 }
 
 async function placeAtStart() {
   const bounds = await invoke("get_desktop_bounds");
   const size = currentWindowSize();
   currentX = bounds.x + Math.round(bounds.width * 0.12);
-  const y = bounds.y + bounds.height - size - 44;
-  await invoke("move_pet_window", { x: currentX, y, size });
+  currentY = bounds.y + bounds.height - size - 44;
+  await invoke("move_pet_window", { x: currentX, y: currentY, size });
 }
 
-function scheduleMove(delay = randomBetween(2600, 5200)) {
+function scheduleMove(delay = nextDelay()) {
   window.clearTimeout(moveTimer);
   if (!options.enabled) return;
 
   moveTimer = window.setTimeout(async () => {
-    await moveToRandomDesktopPoint();
+    await walkToRandomDesktopPoint();
     scheduleMove(nextDelay());
   }, delay);
 }
 
-async function moveToRandomDesktopPoint() {
+async function walkToRandomDesktopPoint() {
+  if (!options.enabled) return;
+
   const bounds = await invoke("get_desktop_bounds");
   const size = currentWindowSize();
   const margin = 22;
@@ -106,19 +158,98 @@ async function moveToRandomDesktopPoint() {
   const maxY = bounds.y + bounds.height - size - margin;
   const minX = bounds.x + margin;
   const minY = bounds.y + margin;
-  const bottomBias = Math.random() > 0.34;
+  const bottomBias = Math.random() > 0.32;
   const targetX = randomBetween(minX, Math.max(minX, maxX));
   const targetY = bottomBias
     ? randomBetween(Math.max(minY, bounds.y + Math.round(bounds.height * 0.62)), Math.max(minY, maxY))
     : randomBetween(minY, Math.max(minY, maxY));
 
-  elements.image.style.transform = targetX < currentX ? "scaleX(-1)" : "scaleX(1)";
-  currentX = targetX;
-  await invoke("move_pet_window", { x: targetX, y: targetY, size });
+  await walkTo(targetX, targetY, randomBetween(2600, 4300));
+}
+
+function walkTo(targetX, targetY, duration) {
+  const startX = currentX;
+  const startY = currentY;
+  const token = ++moveToken;
+  const size = currentWindowSize();
+  const startedAt = performance.now();
+  let lastMove = 0;
+
+  setFacing(targetX < startX ? -1 : 1);
+  startWalking();
+
+  return new Promise((resolve) => {
+    const step = (now) => {
+      if (token !== moveToken || !options.enabled) {
+        stopWalking();
+        resolve();
+        return;
+      }
+
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = easeInOut(progress);
+      currentX = Math.round(startX + (targetX - startX) * eased);
+      currentY = Math.round(startY + (targetY - startY) * eased);
+
+      if (now - lastMove > 42 || progress === 1) {
+        lastMove = now;
+        invoke("move_pet_window", { x: currentX, y: currentY, size });
+      }
+
+      if (progress < 1) {
+        moveFrame = window.requestAnimationFrame(step);
+      } else {
+        stopWalking();
+        setRandomIdleAction();
+        resolve();
+      }
+    };
+
+    moveFrame = window.requestAnimationFrame(step);
+  });
+}
+
+function startWalking() {
+  window.clearInterval(walkFrameTimer);
+  elements.image.classList.remove("pet-breath");
+  walkIndex = 0;
+  elements.image.src = walkSprites[walkIndex];
+  walkFrameTimer = window.setInterval(() => {
+    walkIndex = (walkIndex + 1) % walkSprites.length;
+    elements.image.src = walkSprites[walkIndex];
+  }, 135);
+}
+
+function stopWalking() {
+  window.clearInterval(walkFrameTimer);
+  walkFrameTimer = 0;
+  elements.image.classList.toggle("pet-breath", options.dynamic);
+}
+
+function stopMovement() {
+  window.clearTimeout(moveTimer);
+  window.cancelAnimationFrame(moveFrame);
+  moveToken += 1;
+  stopWalking();
+}
+
+function setStaticAction(action) {
+  elements.image.src = actionSprites[action] || actionSprites.idle;
+  elements.image.classList.toggle("pet-breath", options.dynamic);
+}
+
+function setRandomIdleAction() {
+  setStaticAction(idleActions[randomBetween(0, idleActions.length - 1)]);
+}
+
+function setFacing(direction) {
+  elements.image.style.setProperty("--pet-face", String(direction));
 }
 
 function resetReminderTimer() {
   window.clearInterval(reminderTimer);
+  if (!options.enabled) return;
+
   reminderTimer = window.setInterval(() => {
     showReminder(`休息一下吧，已经连续使用 ${options.reminderMinutes} 分钟了。`);
   }, options.reminderMinutes * 60 * 1000);
@@ -128,7 +259,11 @@ function showReminder(message) {
   elements.image.classList.remove("pet-remind");
   void elements.image.offsetWidth;
   elements.image.classList.add("pet-remind");
+  setStaticAction("paw-raise");
   showSpeech(message, 6200);
+  window.setTimeout(() => {
+    elements.image.classList.remove("pet-remind");
+  }, 4600);
 }
 
 function showSpeech(message, duration) {
@@ -149,20 +284,10 @@ function nextDelay() {
   return randomBetween(Math.max(1700, base - 900), Math.max(2400, base + 1300));
 }
 
-function randomBetween(min, max) {
-  return Math.round(min + Math.random() * (max - min));
+function easeInOut(value) {
+  return value < 0.5 ? 2 * value * value : 1 - Math.pow(-2 * value + 2, 2) / 2;
 }
 
-function createDefaultPetSvg() {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
-      <defs><linearGradient id="body" x1="30" x2="135" y1="26" y2="140"><stop stop-color="#71c7bd"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs>
-      <path d="M36 92c0-31 18-57 44-57s44 26 44 57c0 28-18 43-44 43s-44-15-44-43Z" fill="url(#body)"/>
-      <path d="M52 53c-10-17 5-25 19-12M108 53c10-17-5-25-19-12" fill="none" stroke="#0f4f4a" stroke-width="10" stroke-linecap="round"/>
-      <circle cx="63" cy="83" r="7" fill="#102326"/><circle cx="97" cy="83" r="7" fill="#102326"/>
-      <path d="M67 108c10 8 18 8 28 0" fill="none" stroke="#102326" stroke-width="6" stroke-linecap="round"/>
-      <path d="M38 97c-16 3-23 12-26 25M122 97c16 3 23 12 26 25" fill="none" stroke="#0f766e" stroke-width="8" stroke-linecap="round"/>
-      <circle cx="57" cy="95" r="9" fill="#f3b19a" opacity=".55"/><circle cx="103" cy="95" r="9" fill="#f3b19a" opacity=".55"/>
-    </svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+function randomBetween(min, max) {
+  return Math.round(min + Math.random() * (max - min));
 }
