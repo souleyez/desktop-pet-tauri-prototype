@@ -20,6 +20,7 @@ const sizeMap = {
 const WALK_SCALE = 1.8;
 const WALK_DURATION_RANGE = [26000, 43000];
 const IDLE_DELAY_RANGE = [60000, 90000];
+const WALK_FRAME_INTERVAL = 480;
 
 const actionSprites = {
   idle: "assets/pet/actions/idle.png",
@@ -235,7 +236,7 @@ function startWalking() {
   walkFrameTimer = window.setInterval(() => {
     walkIndex = (walkIndex + 1) % walkSprites.length;
     elements.image.src = walkSprites[walkIndex];
-  }, 135);
+  }, WALK_FRAME_INTERVAL);
 }
 
 function stopWalking() {
