@@ -17,6 +17,10 @@ const sizeMap = {
   large: 235,
 };
 
+const WALK_SCALE = 1.5;
+const WALK_DURATION_RANGE = [26000, 43000];
+const IDLE_DELAY_RANGE = [60000, 90000];
+
 const actionSprites = {
   idle: "assets/pet/actions/idle.png",
   blink: "assets/pet/actions/blink.png",
@@ -78,7 +82,7 @@ async function init() {
   applyOptions();
   await placeAtStart();
   await installListeners();
-  scheduleMove(500);
+  scheduleMove(IDLE_DELAY_RANGE[0]);
   resetReminderTimer();
 }
 
@@ -110,7 +114,7 @@ async function installListeners() {
       Object.assign(options, JSON.parse(event.payload));
       applyOptions();
       resetReminderTimer();
-      scheduleMove(options.enabled ? 150 : 0);
+      scheduleMove(options.enabled ? IDLE_DELAY_RANGE[0] : 0);
     } catch {
       // Ignore malformed prototype payloads.
     }
@@ -152,7 +156,7 @@ async function walkToRandomDesktopPoint() {
   if (!options.enabled) return;
 
   const bounds = await invoke("get_desktop_bounds");
-  const size = currentWindowSize();
+  const size = currentWalkWindowSize();
   const margin = 22;
   const maxX = bounds.x + bounds.width - size - margin;
   const maxY = bounds.y + bounds.height - size - margin;
@@ -164,14 +168,14 @@ async function walkToRandomDesktopPoint() {
     ? randomBetween(Math.max(minY, bounds.y + Math.round(bounds.height * 0.62)), Math.max(minY, maxY))
     : randomBetween(minY, Math.max(minY, maxY));
 
-  await walkTo(targetX, targetY, randomBetween(2600, 4300));
+  await walkTo(targetX, targetY, randomBetween(WALK_DURATION_RANGE[0], WALK_DURATION_RANGE[1]));
 }
 
 function walkTo(targetX, targetY, duration) {
   const startX = currentX;
   const startY = currentY;
   const token = ++moveToken;
-  const size = currentWindowSize();
+  const size = currentWalkWindowSize();
   const startedAt = performance.now();
   let lastMove = 0;
 
@@ -200,6 +204,7 @@ function walkTo(targetX, targetY, duration) {
         moveFrame = window.requestAnimationFrame(step);
       } else {
         stopWalking();
+        invoke("move_pet_window", { x: currentX, y: currentY, size: currentWindowSize() });
         setRandomIdleAction();
         resolve();
       }
@@ -279,9 +284,12 @@ function currentWindowSize() {
   return sizeMap[options.size] || sizeMap.small;
 }
 
+function currentWalkWindowSize() {
+  return Math.round(currentWindowSize() * WALK_SCALE);
+}
+
 function nextDelay() {
-  const base = 7000 - options.speed * 900;
-  return randomBetween(Math.max(1700, base - 900), Math.max(2400, base + 1300));
+  return randomBetween(IDLE_DELAY_RANGE[0], IDLE_DELAY_RANGE[1]);
 }
 
 function easeInOut(value) {
